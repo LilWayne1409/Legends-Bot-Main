@@ -1,0 +1,14 @@
+{
+  "name": "legend-bot",
+  "version": "1.0.0",
+  "description": "Legend Bot - reorganized project",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "deploy": "node deploy-commands.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

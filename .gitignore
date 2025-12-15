@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+index.js.bak
+archive/
+*.log
+/.vscode/
+dist/
+*.sqlite
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+/.DS_Store
