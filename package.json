@@ -10,5 +10,9 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2",
+    "openai": "^6.13.0"
   }
 }

@@ -1,44 +1,25 @@
-import { EmbedBuilder, StringSelectMenuBuilder, ActionRowBuilder } from 'discord.js';
 import { RPSView, RPSBo3View } from '../commands/games/rps.js';
 import { getRandomTopic } from '../commands/topic.js';
 import { aiAsk } from '../ai/chatbot.js';
 
+// Lade Commands
+import * as infoCommand from '../commands/info.js';
+
 export const name = 'interactionCreate';
 export const once = false;
 
-async function handleInfo(interaction, client) {
-    try {
-        await interaction.deferReply();
-
-        const embed = new EmbedBuilder()
-            .setColor(0x5865F2)
-            .setTitle('📘 Bot Info')
-            .setDescription('Choose a category below to learn more about the bot!');
-
-        const menu = new StringSelectMenuBuilder()
-            .setCustomId('info_select')
-            .setPlaceholder('Select a category')
-            .addOptions([
-                { label: 'General Info', value: 'main', emoji: '📘' },
-                { label: 'AI System', value: 'chatbot', emoji: '🤖' },
-                { label: 'Fun', value: 'fun', emoji: '🎉' },
-                { label: 'Polls', value: 'poll', emoji: '📊' },
-                { label: 'Ping', value: 'ping', emoji: '🏓' },
-                { label: 'Topic Generator', value: 'topic', emoji: '💡' }
-            ]);
-
-        const row = new ActionRowBuilder().addComponents(menu);
-        await interaction.editReply({ embeds: [embed], components: [row] });
-    } catch (err) {
-        console.error('/info handler error:', err);
-        if (!interaction.replied) await interaction.reply({ content: 'Error in /info command', ephemeral: true });
-    }
-}
-
 export async function execute(client, interaction) {
     try {
+        // Slash Commands
         if (interaction.isCommand()) {
-            switch (interaction.commandName) {
+            const commandName = interaction.commandName;
+
+            if (commandName === 'info') {
+                await infoCommand.execute(interaction, client);
+                return;
+            }
+
+            switch (commandName) {
                 case 'topic':
                     await interaction.reply(`💡 Here's a topic for you: ${getRandomTopic()}`);
                     break;
@@ -78,9 +59,6 @@ export async function execute(client, interaction) {
                     await cmd.execute(interaction);
                     break;
                 }
-                case 'info':
-                    await handleInfo(interaction, client);
-                    break;
                 case 'rps': {
                     const user = interaction.options.getUser('user') || { id: 'legendbot', username: 'Legend Bot 🤖' };
                     const game = new RPSView(interaction.user, user, interaction);
@@ -121,37 +99,9 @@ export async function execute(client, interaction) {
             }
         }
 
+        // Info SelectMenu
         if (interaction.isStringSelectMenu() && interaction.customId === 'info_select') {
-            const embed = new EmbedBuilder().setColor(0x5865F2);
-            switch (interaction.values[0]) {
-                case 'main':
-                    embed.setTitle('📘 Info').setDescription(`Hey ${interaction.user}! 👋 I’m **Legend Bot**, the official bot of **Lagged Legends**.
-
-**What I can do:**
-• Chat with you using AI
-• Suggest topics
-• Play mini-games
-• Keep the server active with chat reviver
-• Counting channels
-`);
-                    break;
-                case 'chatbot':
-                    embed.setTitle('🤖 Chatbot AI').setDescription(`Legend Bot is an intelligent, fast, and personality-driven AI assistant built to keep the server active, fun, and organized.`);
-                    break;
-                case 'fun':
-                    embed.setTitle('🎉 Fun').setDescription(`Commands: /rps, /rps_bo3, /coinflip, /8ball, /roll, /meme, /joke`);
-                    break;
-                case 'poll':
-                    embed.setTitle('📊 Polls').setDescription('Create quick polls using /poll.');
-                    break;
-                case 'ping':
-                    embed.setTitle('🏓 Ping').setDescription(`Your current ping: **${Math.round(client.ws.ping)}ms**`);
-                    break;
-                case 'topic':
-                    embed.setTitle('💡 Topic Generator').setDescription('Use /topic to get a random conversation topic.');
-                    break;
-            }
-            await interaction.update({ embeds: [embed] });
+            await infoCommand.handleSelectMenu(interaction);
         }
 
     } catch (err) {
