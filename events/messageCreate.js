@@ -1,14 +1,7 @@
-import { handleMessage } from '../ai/chatbot.js';
+// Message-based commands are disabled to enforce slash-commands-only design.
+// The original message-based chatbot logic remains in `ai/chatbot.js` and
+// is used via the `/ai` slash commands.
 
-export const name = 'messageCreate';
+export const name = 'noop_messageCreate';
 export const once = false;
-
-export async function execute(client, message) {
-    try {
-        if (message.author.bot) return;
-        client.chatReviver?.updateActivity();
-        await handleMessage(message);
-    } catch (err) {
-        console.error('messageCreate handler error:', err);
-    }
-}
+export async function execute() {}
