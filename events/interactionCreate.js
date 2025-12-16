@@ -1,8 +1,9 @@
+// events/interactionCreate.js
 import { RPSView, RPSBo3View } from '../commands/games/rps.js';
 import { getRandomTopic } from '../commands/topic.js';
 import { aiAsk } from '../ai/chatbot.js';
 
-// Commands laden
+// Lade Commands
 import * as infoCommand from '../commands/info.js';
 
 export const name = 'interactionCreate';
@@ -10,16 +11,17 @@ export const once = false;
 
 export async function execute(client, interaction) {
     try {
+        // ===== Slash Commands =====
         if (interaction.isCommand()) {
-            const cmd = interaction.commandName;
+            const commandName = interaction.commandName;
 
-            // /info wird extra behandelt
-            if (cmd === 'info') {
+            // /info Command über externe Datei
+            if (commandName === 'info') {
                 await infoCommand.execute(interaction, client);
                 return;
             }
 
-            switch (cmd) {
+            switch (commandName) {
                 case 'topic':
                     await interaction.reply(`💡 Here's a topic for you: ${getRandomTopic()}`);
                     break;
@@ -30,33 +32,33 @@ export async function execute(client, interaction) {
                     await interaction.reply(`Hey ${interaction.user}! 👋`);
                     break;
                 case 'coinflip': {
-                    const command = await import('../commands/fun/coinflip.js');
-                    await command.execute(interaction);
+                    const cmd = await import('../commands/fun/coinflip.js');
+                    await cmd.execute(interaction);
                     break;
                 }
                 case 'roll': {
-                    const command = await import('../commands/fun/roll.js');
-                    await command.execute(interaction);
+                    const cmd = await import('../commands/fun/roll.js');
+                    await cmd.execute(interaction);
                     break;
                 }
                 case 'meme': {
-                    const command = await import('../commands/fun/meme.js');
-                    await command.execute(interaction);
+                    const cmd = await import('../commands/fun/meme.js');
+                    await cmd.execute(interaction);
                     break;
                 }
                 case 'joke': {
-                    const command = await import('../commands/fun/joke.js');
-                    await command.execute(interaction);
+                    const cmd = await import('../commands/fun/joke.js');
+                    await cmd.execute(interaction);
                     break;
                 }
                 case '8ball': {
-                    const command = await import('../commands/fun/8ball.js');
-                    await command.execute(interaction);
+                    const cmd = await import('../commands/fun/8ball.js');
+                    await cmd.execute(interaction);
                     break;
                 }
                 case 'poll': {
-                    const command = await import('../commands/poll.js');
-                    await command.execute(interaction);
+                    const cmd = await import('../commands/poll.js');
+                    await cmd.execute(interaction);
                     break;
                 }
                 case 'rps': {
@@ -72,8 +74,9 @@ export async function execute(client, interaction) {
                     break;
                 }
                 case 'message': {
-                    const command = await import('../commands/message.js');
-                    await command.default.execute(interaction);
+                    const cmd = await import('../commands/message.js');
+                    const command = cmd.default || cmd;
+                    await command.execute(interaction);
                     break;
                 }
                 case 'ai': {
@@ -97,13 +100,15 @@ export async function execute(client, interaction) {
             }
         }
 
-        // /info SelectMenu
+        // ===== SelectMenu für /info =====
         if (interaction.isStringSelectMenu() && interaction.customId === 'info_select') {
             await infoCommand.handleSelectMenu(interaction);
         }
 
     } catch (err) {
         console.error('❌ Interaction error:', err);
-        if (!interaction.replied) await interaction.reply({ content: 'Error while executing command', ephemeral: true });
+        if (!interaction.replied) {
+            await interaction.reply({ content: 'An error occurred while executing this command.', ephemeral: true });
+        }
     }
-}
+};
