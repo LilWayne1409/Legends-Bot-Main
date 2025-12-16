@@ -5,65 +5,68 @@ import { pathToFileURL } from 'url';
 import { Client, GatewayIntentBits, Collection } from 'discord.js';
 
 const TOKEN = process.env.TOKEN?.trim();
+const CLIENT_ID = process.env.CLIENT_ID?.trim();
+const GUILD_ID = process.env.GUILD_ID?.trim();
+const OPENROUTER_KEY = process.env.OPENROUTER_KEY?.trim();
+
+// Sicherheits-Log, damit VS Code die Variablen nutzt
+console.log('✅ Loaded env variables:');
+console.log('TOKEN:', TOKEN ? '✅' : '❌');
+console.log('CLIENT_ID:', CLIENT_ID ? '✅' : '❌');
+console.log('GUILD_ID:', GUILD_ID ? '✅' : '❌');
+console.log('OPENROUTER_KEY:', OPENROUTER_KEY ? '✅' : '❌');
+
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers
-    ]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+  ],
 });
 
 client.commands = new Collection();
 
-// Load counting module
-async function loadCounting() {
-    try {
-        const { countingEvent } = await import('./counting/counting.js').catch(() => ({}));
-        if (countingEvent) client.on(countingEvent.name, (...args) => countingEvent.execute(...args, client));
-    } catch (err) {
-        console.warn('No counting module found or failed to load:', err?.message || err);
-    }
-}
-
-// Load events
+// ------------------- Load Events -------------------
 async function loadEvents() {
-    const eventsDir = path.join(process.cwd(), 'events');
-    if (!fs.existsSync(eventsDir)) return;
+  const eventsDir = path.join(process.cwd(), 'events');
+  if (!fs.existsSync(eventsDir)) return;
 
-    for (const file of fs.readdirSync(eventsDir).filter(f => f.endsWith('.js'))) {
-        try {
-            const eventMod = await import(`./events/${file}`);
-            const ev = eventMod.default || eventMod;
-            if (!ev || !ev.name || !ev.execute) continue;
-            if (ev.once) client.once(ev.name, (...args) => ev.execute(client, ...args));
-            else client.on(ev.name, (...args) => ev.execute(client, ...args));
-        } catch (err) {
-            console.error('Failed loading event', file, err);
-        }
-    }
+  for (const file of fs.readdirSync(eventsDir).filter(f => f.endsWith('.js'))) {
+    const eventMod = await import(pathToFileURL(path.join(eventsDir, file)).href);
+    const ev = eventMod.default || eventMod;
+    if (!ev || !ev.name || !ev.execute) continue;
+    if (ev.once) client.once(ev.name, (...args) => ev.execute(client, ...args));
+    else client.on(ev.name, (...args) => ev.execute(client, ...args));
+  }
 }
 
-// Load commands
-async function loadCommands(dir = './commands') {
-    if (!fs.existsSync(dir)) return;
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-        if (entry.isDirectory()) {
-            await loadCommands(path.join(dir, entry.name));
-        } else if (entry.name.endsWith('.js')) {
-            const cmdPath = path.join(process.cwd(), dir, entry.name);
-            const cmd = await import(pathToFileURL(cmdPath).href);
-            if (cmd.data && cmd.execute) client.commands.set(cmd.data.name, cmd);
-        }
+// ------------------- Load Commands -------------------
+async function loadCommands(dir = path.join(process.cwd(), 'commands')) {
+  if (!fs.existsSync(dir)) return;
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      await loadCommands(path.join(dir, entry.name));
+    } else if (entry.name.endsWith('.js')) {
+      const cmdPath = path.join(dir, entry.name);
+      const cmd = await import(pathToFileURL(cmdPath).href);
+      const mod = cmd.default || cmd;
+      if (mod.data && mod.execute) client.commands.set(mod.data.name, mod);
     }
+  }
 }
 
-// Start bot
+// ------------------- Ready -------------------
 (async () => {
-    await loadCounting();
-    await loadEvents();
-    await loadCommands();
-    client.once('ready', () => console.log(`✅ ${client.user.tag} ready`));
-    await client.login(TOKEN).catch(err => console.error('Login failed:', err));
+  await loadEvents();
+  await loadCommands();
+
+  client.once('ready', () => {
+    console.log(`✅ ${client.user.tag} ready`);
+    // NICHTS: Keine automatische Registrierung
+    console.log('Loaded', client.commands.size, 'commands');
+  });
+
+  await client.login(TOKEN);
 })();
