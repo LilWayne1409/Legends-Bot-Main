@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 
 export const data = new SlashCommandBuilder()
     .setName('joke')
@@ -11,6 +11,13 @@ export async function execute(interaction) {
         "Parallel lines have so much in common… it’s a shame they’ll never meet.",
         "Why don’t cannibals eat clowns? Because they taste funny."
     ];
+
     const selected = jokes[Math.floor(Math.random() * jokes.length)];
-    await interaction.reply(selected);
+
+    const embed = new EmbedBuilder()
+        .setTitle('😂 Random Joke')
+        .setDescription(selected)
+        .setColor(0x5865F2);
+
+    await interaction.reply({ embeds: [embed] });
 }

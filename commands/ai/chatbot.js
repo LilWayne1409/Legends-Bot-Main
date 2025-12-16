@@ -1,0 +1,212 @@
+import { getRandomTopic } from "./topic.js";
+import OpenAI from "openai";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// --------------------------------------------------
+// PATHS & CONSTANTS
+// --------------------------------------------------
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const historyFile = path.join(__dirname, "messageHistory.json");
+
+const MAX_CONTEXT = 6;
+const MAX_CHARS = 200;
+
+// --------------------------------------------------
+// LOAD HISTORY
+// --------------------------------------------------
+let messageHistory = {};
+if (fs.existsSync(historyFile)) {
+    try {
+        messageHistory = JSON.parse(fs.readFileSync(historyFile, "utf8"));
+    } catch {
+        messageHistory = {};
+    }
+}
+
+// --------------------------------------------------
+// AI CLIENT
+// --------------------------------------------------
+const ai = new OpenAI({
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKey: process.env.OPENROUTER_KEY,
+});
+
+// --------------------------------------------------
+// UTILS
+// --------------------------------------------------
+function saveHistory() {
+    fs.writeFileSync(historyFile, JSON.stringify(messageHistory, null, 2));
+}
+
+function trimHistory(channelId) {
+    if (!messageHistory[channelId]) return;
+    if (messageHistory[channelId].length > MAX_CONTEXT) {
+        messageHistory[channelId].splice(0, messageHistory[channelId].length - MAX_CONTEXT);
+    }
+}
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function saveBotReply(channelId, text) {
+    if (!messageHistory[channelId]) messageHistory[channelId] = [];
+    messageHistory[channelId].push({
+        author: "Legend Bot",
+        content: text,
+        timestamp: Date.now()
+    });
+    trimHistory(channelId);
+    saveHistory();
+}
+
+// --------------------------------------------------
+// KEYWORD RESPONSES
+// --------------------------------------------------
+const responses = [
+    {
+        patterns: [/^\s*(hi|hello|hey|yo|hiya|greetings|what's up|howdy)\s*$/i],
+        replies: [
+            "Hey there! 👋",
+            "Hello! How’s it going?",
+            "Hi! Nice to see you here!",
+            "Yo! How’s your day?",
+            "Hiya! What’s up?",
+            "Greetings! 😄",
+            "Hey hey! 😎",
+            "Hello friend! 😊"
+        ]
+    },
+    {
+        patterns: [/bored/i],
+        replies: [
+            "Sounds like you need something fun 😎 Try /rps or /rps_bo3 🕹",
+            "Bored? I got you. Rock Paper Scissors always saves the day 😏",
+            "Let’s fix that — wanna play /rps_bo3 ? 👊",
+            "I bet I can beat your boredom 😎"
+        ]
+    },
+    {
+        patterns: [/give me a topic|topic pls|send me a topic|random topic/i],
+        replies: [() => getRandomTopic()]
+    }
+];
+
+// --------------------------------------------------
+// HANDLE MESSAGE
+// --------------------------------------------------
+export async function handleMessage(message) {
+    try {
+        if (!message.content || message.author.bot) return;
+
+        const channelId = message.channel.id;
+        if (!messageHistory[channelId]) messageHistory[channelId] = [];
+
+        messageHistory[channelId].push({
+            author: message.author.username,
+            content: message.content,
+            timestamp: Date.now()
+        });
+        trimHistory(channelId);
+        saveHistory();
+
+        const clientUser = message.client?.user;
+        if (!clientUser || !message.mentions.has(clientUser)) return;
+
+        let content = message.content.replace(/<@!?(\d+)>/, "").trim();
+        if (!content) return;
+
+        if (content.length > MAX_CHARS) {
+            content = content.slice(0, MAX_CHARS) + "...";
+            try { await message.reply("⚠️ Your message was too long and has been shortened."); } catch {}
+        }
+
+        for (const r of responses) {
+            if (r.patterns.some(p => p.test(content))) {
+                const choice = r.replies[Math.floor(Math.random() * r.replies.length)];
+                const reply = typeof choice === "function" ? choice() : choice;
+                await message.channel.sendTyping();
+                await delay(2000);
+                saveBotReply(channelId, reply);
+                try { await message.reply(reply); } catch {}
+                return;
+            }
+        }
+
+        // GPT fallback
+        await message.channel.sendTyping();
+        await delay(2000);
+        const gptReply = await gptFallback(channelId, content);
+        saveBotReply(channelId, gptReply);
+        try { await message.reply(gptReply); } catch {}
+
+    } catch (err) {
+        console.error("Unhandled error in handleMessage:", err);
+        try { await message.reply("⚠️ An unexpected error occurred. Try again later."); } catch {}
+    }
+}
+
+// --------------------------------------------------
+// SLASH COMMAND AI (/ai ask)
+// --------------------------------------------------
+export async function aiAsk(channelId, userMessage) {
+    try {
+        const reply = await gptFallback(channelId, userMessage);
+        saveBotReply(channelId, reply);
+        return reply;
+    } catch (err) {
+        console.error("AI Ask error:", err);
+        return "⚠️ AI is currently unavailable.";
+    }
+}
+
+// --------------------------------------------------
+// GPT FALLBACK
+// --------------------------------------------------
+async function gptFallback(channelId, userMessage) {
+    try {
+        const history = messageHistory[channelId] || [];
+
+        const formattedHistory = history
+            .filter(m => m.content)
+            .map(m => m.author === "Legend Bot" ? m.content : `User: ${m.content}`)
+            .join("\n");
+
+        const fullPrompt = `
+Conversation so far:
+
+${formattedHistory}
+
+User says: ${userMessage}
+
+You are Legend Bot, a relaxed, fun Discord buddy. 
+- Answer short and naturally, like a friend. 
+- Be playful when appropriate. 
+- Remember previous messages. 
+- Sprinkle emojis lightly. 
+- Occasionally add personality or small jokes. 
+- Mention your name only if asked.
+- Do NOT start any response with "Legend Bot:" or "Bot:".
+`;
+
+        if (!ai?.chat?.completions?.create) return "⚠️ AI client not ready.";
+
+        const response = await ai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+                { role: "system", content: "You are Legend Bot, a Discord chat buddy." },
+                { role: "user", content: fullPrompt }
+            ],
+            max_tokens: 200
+        });
+
+        return response?.choices?.[0]?.message?.content || "⚠️ No response.";
+
+    } catch (err) {
+        console.error("GPT Fallback error:", err);
+        return "⚠️ Sorry, I can't answer right now.";
+    }
+}

@@ -10,7 +10,7 @@ export const data = new SlashCommandBuilder()
     );
 
 export async function execute(interaction) {
-    const question = interaction.options.getString('question');
+    const question = interaction.options.getString('question'); // holt die Frage
     const answers = [
         "Absolutely yes 😏",
         "No way 🤡",

@@ -5,8 +5,6 @@ export const data = new SlashCommandBuilder()
     .setDescription('Flip a coin: Heads or Tails');
 
 export async function execute(interaction) {
-    await interaction.deferReply();
-
     const outcomes = ['Heads', 'Tails'];
     const result = outcomes[Math.floor(Math.random() * outcomes.length)];
 
@@ -16,5 +14,6 @@ export async function execute(interaction) {
         .setColor(result === 'Heads' ? 0x1abc9c : 0xe74c3c)
         .setFooter({ text: 'Try your luck again!' });
 
-    setTimeout(() => interaction.editReply({ embeds: [embed] }), 1000);
+    // sofort antworten
+    await interaction.reply({ embeds: [embed] });
 }

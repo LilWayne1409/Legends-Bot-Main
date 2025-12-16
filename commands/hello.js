@@ -1,9 +1,14 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 
 export const data = new SlashCommandBuilder()
     .setName('hello')
-    .setDescription('Say hello to the bot');
+    .setDescription('Say hi to the bot!');
 
 export async function execute(interaction) {
-    await interaction.reply(`Hey ${interaction.user}! 👋`);
+    const embed = new EmbedBuilder()
+        .setTitle('👋 Hello!')
+        .setDescription(`Hello, ${interaction.user.username}!`)
+        .setColor(0x5865F2);
+
+    await interaction.reply({ embeds: [embed] });
 }

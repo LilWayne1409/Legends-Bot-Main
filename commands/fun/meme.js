@@ -14,12 +14,15 @@ export async function execute(interaction) {
         const embed = new EmbedBuilder()
             .setTitle(json.title)
             .setImage(json.url)
-            .setColor(0xFF4500)
-            .setURL(json.postLink);
+            .setURL(json.postLink)
+            .setColor(0xFF4500);
 
         await interaction.reply({ embeds: [embed] });
     } catch (err) {
         console.error('Error fetching meme:', err);
-        await interaction.reply({ content: '⚠️ Couldn\'t fetch a meme right now, try again later!', ephemeral: true });
+        await interaction.reply({ 
+            content: '⚠️ Couldn\'t fetch a meme right now, try again later!', 
+            ephemeral: true 
+        });
     }
 }

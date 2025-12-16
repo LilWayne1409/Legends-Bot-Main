@@ -4,7 +4,7 @@ export const data = new SlashCommandBuilder()
     .setName('info')
     .setDescription('Show bot info and commands!');
 
-export async function execute(interaction, client) {
+export async function execute(interaction) {
     try {
         await interaction.deferReply();
 
@@ -31,12 +31,14 @@ export async function execute(interaction, client) {
     } catch (err) {
         console.error("❌ /info ERROR:", err);
         if (!interaction.replied) {
-            await interaction.reply({ content: "Error in /info command", ephemeral: true });
+            await interaction.reply({ content: "⚠️ Error in /info command", ephemeral: true });
+        } else {
+            await interaction.editReply({ content: "⚠️ Error in /info command" });
         }
     }
 }
 
-// Optional: handle select menu interactions separately, z.B. in events/interactionCreate.js
+// Handle select menu interactions
 export async function handleSelectMenu(interaction) {
     if (!interaction.isStringSelectMenu() || interaction.customId !== 'info_select') return;
 
@@ -57,20 +59,12 @@ export async function handleSelectMenu(interaction) {
 Legend Bot is here to make your server fun, engaging, and interactive!`);
             break;
         case 'chatbot':
-            embed.setTitle('🤖 Chatbot AI').setDescription(`🤖 **Legend Bot - Your Smart Server Assistant**
-
-Legend Bot is an intelligent, fast, and personality-driven AI assistant built to keep the server active, fun, and organized.
-
-🧠 **Why Legend Bot?**
-He’s fast, fun, and behaves like a real personality, without being annoying.
-You can talk to him like a friend, ask for help, or just let him entertain the chat.
-
-**Responds only when mentioned (@Legend Bot)**
+            embed.setTitle('🤖 Chatbot AI').setDescription(`Legend Bot is an intelligent, fun, and personality-driven AI assistant built to keep the server active and entertaining.
 
 **Features:**
 • Chat with you using **GPT GPT-4o Mini**
 • Keyword responses for greetings, moods, games, fun, etc.
-• Multiple ways to ask for a topic
+• Topic suggestions
 • GPT fallback if no keyword match
 • Auto-truncates long messages`);
             break;
@@ -84,18 +78,10 @@ You can talk to him like a friend, ask for help, or just let him entertain the c
 • **/8ball** – Ask the Magic 8 Ball a question  
 • **/roll [max]** – Roll a number between 1 and max  
 • **/meme** – Get a random meme  
-• **/joke** – Get a random joke  
-
-Have fun and keep the chat lively!`);
+• **/joke** – Get a random joke`);
             break;
         case 'poll':
-            embed.setTitle('📊 Polls').setDescription(`**Create quick and interactive polls in your server.**
-Use the /poll command to ask a question and let users vote with ✅/❌.
-
-Polls help engage your members, gather opinions, and make decisions quickly.
-
-Example:
-• /poll question: "Which game should we play tonight?"`);
+            embed.setTitle('📊 Polls').setDescription(`Create quick and interactive polls in your server with /poll. Users can vote with ✅/❌.`);
             break;
         case 'ping':
             embed.setTitle('🏓 Ping').setDescription(`Your current ping: **${Math.round(interaction.client.ws.ping)}ms**`);

@@ -2,21 +2,20 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 
 export const data = new SlashCommandBuilder()
     .setName('message')
-    .setDescription('Send a custom message through the bot.')
+    .setDescription('Send a custom message')
     .addStringOption(option =>
-        option
-            .setName('text')
-            .setDescription('The message you want the bot to send.')
+        option.setName('text')
+            .setDescription('Your message')
             .setRequired(true)
     );
 
 export async function execute(interaction) {
     const text = interaction.options.getString('text');
 
-    const confirmEmbed = new EmbedBuilder().setColor(0x4caf50).setTitle('📩 Message sent!');
+    const embed = new EmbedBuilder()
+        .setTitle('💬 Custom Message')
+        .setDescription(text)
+        .setColor(0x5865F2);
 
-    await interaction.reply({ embeds: [confirmEmbed], ephemeral: true });
-
-    const msgEmbed = new EmbedBuilder().setColor(0x8000ff).setDescription(text);
-    await interaction.channel.send({ embeds: [msgEmbed] });
+    await interaction.reply({ embeds: [embed] });
 }
