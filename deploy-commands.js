@@ -1,51 +1,106 @@
-import 'dotenv/config';
+import { SlashCommandBuilder } from '@discordjs/builders';
+import { REST } from '@discordjs/rest';
+import { Routes } from 'discord-api-types/v10';
 import fs from 'fs';
 import path from 'path';
-import { REST, Routes } from 'discord.js';
-
-const TOKEN = process.env.TOKEN?.trim();
-const CLIENT_ID = process.env.CLIENT_ID?.trim();
-const GUILD_ID = process.env.GUILD_ID?.trim();
-
-function readCommandFiles(dir) {
-    const commands = [];
-    for (const file of fs.readdirSync(dir)) {
-        const full = path.join(dir, file);
-        if (fs.statSync(full).isDirectory()) commands.push(...readCommandFiles(full));
-        else if (file.endsWith('.js')) commands.push(full);
-    }
-    return commands;
-}
-
-async function main() {
-    const commandsPath = path.join(process.cwd(), 'commands');
-    if (!fs.existsSync(commandsPath)) {
-        console.error('commands directory not found');
-        return;
-    }
-
-    const files = readCommandFiles(commandsPath);
-    const commandData = [];
-
-    for (const f of files) {
-        try {
-            const mod = await import(pathToFileURL(f).href);
-            if (mod.data) commandData.push(mod.data.toJSON ? mod.data.toJSON() : mod.data);
-            else if (mod.default && mod.default.data) commandData.push(mod.default.data.toJSON ? mod.default.data.toJSON() : mod.default.data);
-        } catch (err) {
-            console.warn('Failed to import command', f, err.message || err);
-        }
-    }
-
-    const rest = new REST({ version: '10' }).setToken(TOKEN);
-    try {
-        console.log('Registering', commandData.length, 'commands...');
-        await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commandData });
-        console.log('Registered commands.');
-    } catch (err) {
-        console.error('Failed registering commands:', err);
-    }
-}
-
 import { pathToFileURL } from 'url';
-main();
+
+export const deployCommands = async (client, guildId) => {
+  if (!guildId) {
+    console.error('❌ Please provide a GUILD_ID for deployment. Guild Commands only.');
+    return;
+  }
+
+  const languageChoices = [
+    { name: 'Deutsch', value: 'German' },
+    { name: 'English', value: 'English' },
+    { name: 'Русский', value: 'Russian' },
+    { name: '中文', value: 'Chinese' },
+    { name: '日本語', value: 'Japanese' },
+    { name: 'Dänisch', value: 'Danish' },
+    { name: 'Polnisch', value: 'Polish' },
+    { name: 'Spanisch', value: 'Spanish' },
+    { name: 'Französisch', value: 'French' },
+    { name: 'Italienisch', value: 'Italian' },
+    { name: 'Portugiesisch', value: 'Portuguese' },
+    { name: 'Norwegisch', value: 'Norwegian' },
+    { name: 'Schwädisch', value: 'Swedish' }
+  ];
+
+  const commands = [
+    new SlashCommandBuilder().setName('topic').setDescription('Get a random topic to chat about!'),
+    new SlashCommandBuilder().setName('ping').setDescription('Check bot latency!'),
+    new SlashCommandBuilder().setName('hello').setDescription('Say hi to the bot!'),
+    new SlashCommandBuilder().setName('info').setDescription('Show bot info and commands!'),
+    new SlashCommandBuilder()
+      .setName('rps')
+      .setDescription('Play Rock Paper Scissors with a user')
+      .addUserOption(option => option.setName('user').setDescription('User to challenge').setRequired(false)),
+    new SlashCommandBuilder()
+      .setName('rps_bo3')
+      .setDescription('Play Best of 3 Rock Paper Scissors')
+      .addUserOption(option => option.setName('user').setDescription('User to challenge').setRequired(false)),
+    new SlashCommandBuilder().setName('coinflip').setDescription('Flip a coin'),
+    new SlashCommandBuilder().setName('roll').setDescription('Roll a number between 1 and max'),
+    new SlashCommandBuilder().setName('meme').setDescription('Get a random meme'),
+    new SlashCommandBuilder().setName('joke').setDescription('Get a random joke'),
+    new SlashCommandBuilder()
+      .setName('8ball')
+      .setDescription('Ask the Magic 8 Ball a question')
+      .addStringOption(option => option.setName('question').setDescription('Your question').setRequired(true)),
+    new SlashCommandBuilder()
+      .setName('poll')
+      .setDescription('Create a quick poll with ✅/❌ votes')
+      .addStringOption(option => option.setName('question').setDescription('The poll question').setRequired(true)),
+    new SlashCommandBuilder()
+      .setName('ai')
+      .setDescription('All AI related commands')
+      .addSubcommand(sub =>
+        sub.setName('ask')
+          .setDescription('Ask something to the AI')
+          .addStringOption(option => option.setName('question').setDescription('Your question for the AI').setRequired(true))
+      )
+      .addSubcommand(sub =>
+        sub.setName('translate')
+          .setDescription('Translate text to another language')
+          .addStringOption(option => option.setName('text').setDescription('Text to translate').setRequired(true))
+          .addStringOption(option =>
+            option.setName('language')
+                  .setDescription('Target language')
+                  .setRequired(true)
+                  .addChoices(...languageChoices)
+          )
+      )
+  ];
+
+  // ------------------- Alle Commands aus commands-Ordner laden -------------------
+  async function loadFolderCommands(dir = path.join(process.cwd(), 'commands')) {
+    if (!fs.existsSync(dir)) return;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        await loadFolderCommands(path.join(dir, entry.name));
+      } else if (entry.name.endsWith('.js')) {
+        const cmd = await import(pathToFileURL(path.join(dir, entry.name)).href);
+        const mod = cmd.default || cmd;
+        if (mod.data) commands.push(mod.data.toJSON());
+      }
+    }
+  }
+
+  await loadFolderCommands();
+
+  // ------------------- REST Deploy (nur Guild) -------------------
+  const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+
+  try {
+    console.log(`📦 Deploying ${commands.length} guild commands...`);
+    await rest.put(
+      Routes.applicationGuildCommands(client.user.id, guildId),
+      { body: commands }
+    );
+    console.log('✅ Guild commands deployed successfully!');
+  } catch (error) {
+    console.error('❌ Failed to deploy commands:', error);
+  }
+};
