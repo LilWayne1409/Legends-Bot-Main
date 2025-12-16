@@ -1,4 +1,4 @@
-import { getRandomTopic } from "./topic.js";
+import { getRandomTopic } from "../topic.js";
 import OpenAI from "openai";
 import fs from "fs";
 import path from "path";

@@ -1,43 +1,62 @@
-import { Client, GatewayIntentBits, Collection } from "discord.js";
-import fs from "fs";
-import path from "path";
-import "dotenv/config";
+import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
+import { pathToFileURL } from 'url';
+import { Client, GatewayIntentBits, Collection } from 'discord.js';
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-client.commands = new Collection();
-
-function getAllCommandFiles(dirPath) {
-  let files = [];
-  const items = fs.readdirSync(dirPath, { withFileTypes: true });
-  for (const item of items) {
-    if (item.isDirectory()) {
-      files = files.concat(getAllCommandFiles(path.join(dirPath, item.name)));
-    } else if (item.name.endsWith(".js")) {
-      files.push(path.join(dirPath, item.name));
-    }
-  }
-  return files;
-}
-
-// Commands laden
-const commandFiles = getAllCommandFiles(path.resolve("src/commands"));
-for (const file of commandFiles) {
-  const command = await import(file);
-  client.commands.set(command.data.name, command);
-}
-
-// Interaction Handler
-client.on("interactionCreate", async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-  const command = client.commands.get(interaction.commandName);
-  if (!command) return;
-
-  try {
-    await command.execute(interaction);
-  } catch (err) {
-    console.error(err);
-    await interaction.reply({ content: "❌ Error executing command", ephemeral: true });
-  }
+const TOKEN = process.env.TOKEN?.trim();
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+  ],
 });
 
-client.login(process.env.TOKEN);
+client.commands = new Collection();
+
+// Load events
+async function loadEvents() {
+  const eventsDir = path.join(process.cwd(), 'events');
+  if (!fs.existsSync(eventsDir)) return;
+
+  for (const file of fs.readdirSync(eventsDir).filter(f => f.endsWith('.js'))) {
+    try {
+      const eventMod = await import(pathToFileURL(path.join(eventsDir, file)).href);
+      const ev = eventMod.default || eventMod;
+      if (!ev || !ev.name || !ev.execute) continue;
+      if (ev.once) client.once(ev.name, (...args) => ev.execute(client, ...args));
+      else client.on(ev.name, (...args) => ev.execute(client, ...args));
+    } catch (err) {
+      console.error('Failed loading event', file, err);
+    }
+  }
+}
+
+// Load commands
+async function loadCommands(dir = path.join(process.cwd(), 'commands')) {
+  if (!fs.existsSync(dir)) return;
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      await loadCommands(path.join(dir, entry.name));
+    } else if (entry.name.endsWith('.js')) {
+      const cmdPath = path.join(dir, entry.name);
+      try {
+        const cmd = await import(pathToFileURL(cmdPath).href);
+        const mod = cmd.default || cmd;
+        if (mod.data && mod.execute) client.commands.set(mod.data.name, mod);
+      } catch (err) {
+        console.error('Failed loading command', cmdPath, err);
+      }
+    }
+  }
+}
+
+(async () => {
+  await loadEvents();
+  await loadCommands();
+  client.once('ready', () => console.log(`✅ ${client.user.tag} ready`));
+  await client.login(TOKEN).catch(err => console.error('Login failed:', err));
+})();

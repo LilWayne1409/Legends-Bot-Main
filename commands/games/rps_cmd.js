@@ -1,5 +1,4 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { RPSView, RPSBo3View } from './rps.js';
 
 export const data = new SlashCommandBuilder()
     .setName('rps')
@@ -11,6 +10,7 @@ export const data = new SlashCommandBuilder()
     ));
 
 export async function execute(interaction) {
+    const { RPSView, RPSBo3View } = await import('./rps.js');
     const user = interaction.options.getUser('user') || { id: 'legendbot', username: 'Legend Bot 🤖' };
     const mode = interaction.options.getString('mode') || 'single';
 
