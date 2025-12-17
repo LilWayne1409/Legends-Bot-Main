@@ -53,7 +53,12 @@ export default {
         try {
             await interaction.deferReply();
 
+<<<<<<< HEAD
             const prompt = `Translate the following text to ${language}:\n"${text}"\nOnly provide the translation, nothing else.`;
+=======
+            const prompt = `Translate the following text into ${language}.\nONLY provide the translated text. NO explanations, NO extra text.\nText: "${text}"`;
+
+>>>>>>> e700fa6 (Initial commit)
 
             const translation = await aiAsk(interaction.channel.id, prompt);
 

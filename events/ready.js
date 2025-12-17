@@ -32,9 +32,15 @@ export async function execute(client) {
     }, 15000);
 
     // Chat reviver setup (channel id kept from original)
+<<<<<<< HEAD
     const REVIVE_CHANNEL_ID = '1419352213607809046';
     client.chatReviver = new ChatReviver(client, REVIVE_CHANNEL_ID);
     client.chatReviver.start();
+=======
+//    const REVIVE_CHANNEL_ID = '1419352213607809046';
+//    client.chatReviver = new ChatReviver(client, REVIVE_CHANNEL_ID);
+//    client.chatReviver.start();
+>>>>>>> e700fa6 (Initial commit)
 
     client.emit('clientReady');
 }

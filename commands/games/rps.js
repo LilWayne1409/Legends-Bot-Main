@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, EmbedBuilder } from 'discord.js';
 
 export class RPSView {
@@ -202,4 +203,133 @@ export class RPSBo3View {
         const wins = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
         return wins[p] === o ? this.player : this.opponent;
     }
+=======
+import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ComponentType } from 'discord.js';
+
+export const data = new SlashCommandBuilder()
+  .setName('rps')
+  .setDescription('Play Rock Paper Scissors')
+  .addUserOption(opt => opt.setName('user').setDescription('Opponent').setRequired(false))
+  .addStringOption(opt => opt.setName('mode').setDescription('Mode: single or bo3').addChoices(
+    { name: 'single', value: 'single' },
+    { name: 'bo3', value: 'bo3' }
+  ));
+
+const choices = ['rock', 'paper', 'scissors'];
+
+class RPSView {
+  constructor(player1, player2, interaction) {
+    this.player1 = player1;
+    this.player2 = player2;
+    this.interaction = interaction;
+  }
+
+  async playRound() {
+    return new Promise(async (resolve) => {
+      const row = new ActionRowBuilder().addComponents(
+        choices.map(c => new ButtonBuilder().setCustomId(c).setLabel(c).setStyle(ButtonStyle.Primary))
+      );
+
+      await this.interaction.followUp({ content: `${this.player1.username}, choose your move!`, components: [row], ephemeral: true });
+
+      const filter = i => i.user.id === this.player1.id;
+      const collector = this.interaction.channel.createMessageComponentCollector({ filter, max: 1, time: 15000 });
+
+      collector.on('collect', async i => {
+        const p1Choice = i.customId;
+        const p2Choice = this.player2.id === 'legendbot' ? choices[Math.floor(Math.random() * choices.length)] : 'rock';
+        let result = 'Draw!';
+        let winnerId = null;
+
+        if ((p1Choice === 'rock' && p2Choice === 'scissors') ||
+            (p1Choice === 'paper' && p2Choice === 'rock') ||
+            (p1Choice === 'scissors' && p2Choice === 'paper')) {
+          result = `${this.player1.username} wins this round! 🎉`;
+          winnerId = this.player1.id;
+        } else if (p1Choice !== p2Choice) {
+          result = `${this.player2.username} wins this round! 😢`;
+          winnerId = this.player2.id;
+        }
+
+        await i.update({ content: `You chose **${p1Choice}**\n${this.player2.username} chose **${p2Choice}**\n${result}`, components: [] });
+        resolve({ winnerId, p1Choice, p2Choice });
+      });
+
+      collector.on('end', collected => {
+        if (collected.size === 0) resolve({ winnerId: null, p1Choice: '❌', p2Choice: '❌' });
+      });
+    });
+  }
+}
+
+class RPSBo3View {
+  constructor(player1, player2, interaction) {
+    this.player1 = player1;
+    this.player2 = player2;
+    this.interaction = interaction;
+    this.score = { [player1.id]: 0, [player2.id]: 0 };
+    this.roundHistory = [];
+  }
+
+  async start() {
+    const embed = new EmbedBuilder()
+      .setTitle('Best of 3 RPS 🪨📄✂️')
+      .setColor('Random')
+      .setDescription(`**${this.player1.username}** vs **${this.player2.username}**\nStarting game...`);
+
+    await this.interaction.reply({ embeds: [embed] });
+
+    for (let round = 1; round <= 3; round++) {
+      const roundGame = new RPSView(this.player1, this.player2, this.interaction);
+      const result = await roundGame.playRound();
+      this.roundHistory.push(result);
+
+      // Score aktualisieren
+      if (result.winnerId) this.score[result.winnerId]++;
+
+      // Embed aktualisieren
+      let desc = '';
+      this.roundHistory.forEach((r, idx) => {
+        desc += `**Round ${idx + 1}:** ${this.player1.username} chose **${r.p1Choice}**, ${this.player2.username} chose **${r.p2Choice}** - `;
+        if (!r.winnerId) desc += 'Draw\n';
+        else desc += `${r.winnerId === this.player1.id ? this.player1.username : this.player2.username} wins\n`;
+      });
+      desc += `\n**Score:** ${this.player1.username} ${this.score[this.player1.id]} - ${this.player2.username} ${this.score[this.player2.id]}`;
+
+      embed.setDescription(desc);
+      await this.interaction.editReply({ embeds: [embed] });
+      await new Promise(r => setTimeout(r, 1000)); // kleine Pause zwischen Runden
+    }
+
+    // Gewinner bestimmen
+    let finalWinner;
+    if (this.score[this.player1.id] > this.score[this.player2.id]) finalWinner = this.player1.username;
+    else if (this.score[this.player2.id] > this.score[this.player1.id]) finalWinner = this.player2.username;
+    else finalWinner = 'No one, it\'s a tie';
+
+    embed.setDescription(`${embed.data.description}\n\n🏆 **Game Over! Winner:** ${finalWinner}`)
+         .setColor('Gold');
+    await this.interaction.editReply({ embeds: [embed], components: [] });
+  }
+}
+
+export async function execute(interaction) {
+  const user = interaction.options.getUser('user') || { id: 'legendbot', username: 'Legend Bot 🤖' };
+  const mode = interaction.options.getString('mode') || 'single';
+
+  if (mode === 'bo3') {
+    const game = new RPSBo3View(interaction.user, user, interaction);
+    await game.start();
+  } else {
+    const game = new RPSView(interaction.user, user, interaction);
+    const result = await game.playRound();
+
+    // Einfaches Embed für Single Mode
+    const embed = new EmbedBuilder()
+      .setTitle('RPS Single 🪨📄✂️')
+      .setColor('Random')
+      .setDescription(`You chose **${result.p1Choice}**\n${user.username} chose **${result.p2Choice}**\n${result.winnerId === interaction.user.id ? 'You win! 🎉' : result.winnerId === user.id ? `${user.username} wins! 😢` : 'Draw!'}`);
+    await interaction.followUp({ embeds: [embed] });
+  }
+>>>>>>> e700fa6 (Initial commit)
 }

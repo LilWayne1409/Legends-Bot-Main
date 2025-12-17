@@ -3,13 +3,26 @@ import fs from 'fs';
 import path from 'path';
 import { pathToFileURL } from 'url';
 import { Client, GatewayIntentBits, Collection } from 'discord.js';
+<<<<<<< HEAD
+=======
+import { handleMessage } from './commands/ai/chatbot.js'; // AI Handler importieren
+>>>>>>> e700fa6 (Initial commit)
 
 const TOKEN = process.env.TOKEN?.trim();
 const CLIENT_ID = process.env.CLIENT_ID?.trim();
 const GUILD_ID = process.env.GUILD_ID?.trim();
 const OPENROUTER_KEY = process.env.OPENROUTER_KEY?.trim();
 
+<<<<<<< HEAD
 // Sicherheits-Log, damit VS Code die Variablen nutzt
+=======
+if (!TOKEN) {
+  console.error('❌ TOKEN fehlt – Bot wird nicht gestartet');
+  process.exit(1);
+}
+
+// Sicherheits-Log
+>>>>>>> e700fa6 (Initial commit)
 console.log('✅ Loaded env variables:');
 console.log('TOKEN:', TOKEN ? '✅' : '❌');
 console.log('CLIENT_ID:', CLIENT_ID ? '✅' : '❌');
@@ -57,20 +70,26 @@ async function loadCommands(dir = path.join(process.cwd(), 'commands')) {
   }
 }
 
-// ------------------- Ready & Deploy Commands -------------------
+<<<<<<< HEAD
+=======
+// ------------------- AI Chat Listener -------------------
+client.on('messageCreate', async (message) => {
+  try {
+    await handleMessage(message);
+  } catch (err) {
+    console.error("Error in AI message listener:", err);
+  }
+});
+
+>>>>>>> e700fa6 (Initial commit)
+// ------------------- Ready -------------------
 (async () => {
   await loadEvents();
   await loadCommands();
 
-  client.once('ready', async () => {
+  client.once('ready', () => {
     console.log(`✅ ${client.user.tag} ready`);
-
-    try {
-      const { deployCommands } = await import('./deploy-commands.js');
-      await deployCommands(client, GUILD_ID);
-    } catch (err) {
-      console.error('Failed to deploy commands', err);
-    }
+    console.log('Loaded', client.commands.size, 'commands');
   });
 
   await client.login(TOKEN);
