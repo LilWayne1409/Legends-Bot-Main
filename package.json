@@ -12,14 +12,9 @@
     "node": ">=18"
   },
   "dependencies": {
-<<<<<<< HEAD
-    "node-fetch": "^3.3.2",
-    "openai": "^6.13.0"
-=======
     "discord.js": "^14.11.0",
     "node-fetch": "^3.3.2",
     "openai": "^6.13.0",
     "dotenv": "^16.4.5"
->>>>>>> e700fa6 (Initial commit)
   }
 }
